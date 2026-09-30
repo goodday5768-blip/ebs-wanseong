@@ -455,7 +455,8 @@ $('#consentNo').onclick = () => { $('#consentCard').hidden = true; $('#msg').tex
 
 function newRound() {
   cur.qs = makeRound(cur.sel); cur.ansd = cur.qs.map(() => -1); cur.round++; cur.t0 = Date.now(); cur.stage = cur.qs.some(q => q.stage === 2) ? 1 : 2;
-  $('#tNo').textContent = cur.key; $('#tTry').textContent = `${cur.round}번째 도전 · ${cur.qs.length}문제`;
+  const n2 = cur.qs.filter(q => q.stage === 2).length, n1 = cur.qs.length - n2;
+  $('#tNo').textContent = cur.key; $('#tTry').textContent = `${cur.round}번째 도전 · ${cur.qs.length}문제` + (n2 ? ` (문장 ${n1} + 유형 ${n2})` : '');
   $('#result').hidden = true; $('#next').hidden = true; $('#submit').hidden = false;
   const box = $('#qs'); box.innerHTML = ''; box.className = '';
   cur.qs.forEach((q, qi) => {
@@ -465,6 +466,7 @@ function newRound() {
     c.querySelectorAll('input').forEach(inp => inp.onchange = () => { cur.ansd[qi] = +inp.value; c.querySelectorAll('.opt').forEach((l, li) => l.classList.toggle('sel', li === +inp.value)); updateSubmit(); });
     box.appendChild(c);
   });
+  if (cur.stage === 1) box.insertAdjacentHTML('afterbegin', `<div class="stagenote" id="stNote"><b>1단계</b> — 지문마다 문장 문제 3개(해석·어휘·어법)를 먼저 풉니다. 다 풀고 아래 「다음 — 유형 문제」를 누르면 <b>2단계: 지문마다 유형 문제 1개</b>(지문 전체)가 나옵니다. 모두 ${cur.qs.length}문제, 전부 맞혀야 통과.</div>`);
   updateSubmit(); window.scrollTo(0, 0);
 }
 function updateSubmit() {
@@ -475,7 +477,8 @@ function updateSubmit() {
 function toStage2() {   // 문장 문제 답을 잠그고 유형 문제(지문 전체)를 보인다
   cur.stage = 2;
   [...$('#qs').children].forEach(c => { if (c.dataset.stage === '1') { c.hidden = true; c.querySelectorAll('input').forEach(i => i.disabled = true); } else if (c.dataset.stage === '2') c.hidden = false; });
-  $('#qs').insertAdjacentHTML('afterbegin', '<div class="stagenote" id="stNote">문장 문제 답은 잠겼습니다. 이제 지문마다 유형 문제 1개를 풀고 채점하세요.</div>');
+  const nt = $('#stNote'); if (nt) nt.remove();
+  $('#qs').insertAdjacentHTML('afterbegin', '<div class="stagenote" id="stNote"><b>2단계</b> — 문장 문제 답은 잠겼습니다. 이제 지문마다 유형 문제 1개를 풀고 채점하세요.</div>');
   updateSubmit(); window.scrollTo(0, 0);
 }
 function grade() {
