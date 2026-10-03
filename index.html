@@ -244,14 +244,18 @@ function report(event, extra) {
 }
 async function gate(name, range) {
   if (!CFG.report_url) return {allow: true};
-  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
-  try {
-    const r = await fetch(CFG.report_url, {method: 'POST', signal: ctl.signal, headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body: JSON.stringify({event: 'start', name, range, device: devId(), app: APP, time: fmtTime(new Date()), ua: navigator.userAgent.slice(0, 120)})});
-    const txt = await r.text();
-    try { const j = JSON.parse(txt); return typeof j.allow === 'boolean' ? j : {allow: true}; } catch (e) { return {allow: true}; }
-  } catch (e) { return {allow: false, offline: true}; }
-  finally { clearTimeout(t); }
+  // 2026-10-03: 서버가 늦게 깨어나면 20초를 넘겨 「서버에 연결하지 못했습니다」가 떴다 → 한 번에 60초까지 기다리고, 실패하면 한 번 더 시도
+  for (let i = 0; i < 2; i++) {
+    if (i) { const m = document.getElementById('msg'); if (m) m.textContent = '서버 응답이 늦어 한 번 더 확인하는 중…'; }
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 60000);
+    try {
+      const r = await fetch(CFG.report_url, {method: 'POST', signal: ctl.signal, headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify({event: 'start', name, range, device: devId(), app: APP, time: fmtTime(new Date()), ua: navigator.userAgent.slice(0, 120)})});
+      const txt = await r.text();
+      try { const j = JSON.parse(txt); return typeof j.allow === 'boolean' ? j : {allow: true}; } catch (e) { return {allow: true}; }
+    } catch (e) { if (i) return {allow: false, offline: true}; await new Promise(res => setTimeout(res, 1500)); }
+    finally { clearTimeout(t); }
+  }
 }
 const useRoster = () => Array.isArray(CFG.roster) && CFG.roster.length > 0;
 const nameValue = () => cleanName(useRoster() ? $('#nameSel').value : $('#name').value);
